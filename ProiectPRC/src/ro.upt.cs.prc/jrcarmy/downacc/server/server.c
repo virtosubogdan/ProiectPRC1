@@ -7,7 +7,7 @@
 #include <stdio.h>
 /**
  * @since 28/02/2012
- * @author bufu
+ * @author bufu und ady bicepsosu
  */
 
 #define SOCKET_ERROR        -1
