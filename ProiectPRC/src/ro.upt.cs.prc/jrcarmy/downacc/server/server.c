@@ -8,7 +8,6 @@
 /**
  * @since 28/02/2012
  * @author bufu
- * lablablab
  */
 
 #define SOCKET_ERROR        -1
