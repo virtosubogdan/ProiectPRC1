@@ -8,7 +8,7 @@
 #include <stdlib.h>
 /**
  * @since 28/02/2012
- * @author bufu
+ * @author bufu und ady bicepsosu
  */
 
 #define ERROR        -1
