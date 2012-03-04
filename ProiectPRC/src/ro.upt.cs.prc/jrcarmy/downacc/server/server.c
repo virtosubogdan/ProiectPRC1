@@ -8,6 +8,7 @@
 /**
  * @since 28/02/2012
  * @author bufu und ady bicepsosu
+ * @bla uatever...
  */
 
 #define SOCKET_ERROR        -1
