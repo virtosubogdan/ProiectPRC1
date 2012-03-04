@@ -6,8 +6,7 @@
 #include <unistd.h>
 #include <stdio.h>
 /*
- *
- *
+ * test
  * @since 28/02/2012
  * @author bufu
  */
@@ -18,7 +17,6 @@
  *
  */
 int main(int argc, char* argv[]) {
-
 
 	int hSocket; /* handle to socket */
 	struct hostent* pHostInfo; /* holds info about a machine */
