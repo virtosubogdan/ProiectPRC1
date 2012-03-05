@@ -57,7 +57,7 @@ int getSocket(servInfo server) {
 int interogareSecventiala(int nrServere, servInfo servere[], char *fisier) {
 	printf("Interogare %d servere\n", nrServere);
 	int hSocket;
-	int index, lungimeNume = strlen(fisier);
+	int index, lungimeNume = strlen(fisier) + 1;
 	int cerere = 0;
 	int lungimeFisier = -1, citit;
 	for (index = 0; index < nrServere; index++) {
