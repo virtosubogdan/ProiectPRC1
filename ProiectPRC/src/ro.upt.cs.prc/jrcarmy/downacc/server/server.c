@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
@@ -9,6 +10,7 @@
 /**
  * @since 28/02/2012
  * @author bufu und ady bicepsosu
+ * @bla uatever...
  */
 
 #define ERROR        -1
@@ -23,12 +25,30 @@ void cerereDownload(int nSocket) {
 	printf("ajuns la cerere download");
 }
 
-void trateazaSocket(int nSocket) {
+void trateazaSocket(int nSocket, char *dir) {
 	int nIdCerere;
 	printf("read %d bytes\n", (int) read(nSocket, &nIdCerere, 4));
 	printf("citit %d\n", nIdCerere);
-	int nr = 334;
-	write(nSocket, &nr, 4);
+
+	int filenameSize;
+	int resp;
+
+	read(nSocket, &filenameSize, 4);
+
+	char filename[filenameSize];
+	read(nSocket, &filename, filenameSize);
+
+	strcat(dir, filename);
+
+	struct stat fs;
+	if (stat(dir, &fs) < 0)
+		resp = -1;
+	else
+		resp = fs.st_size;
+
+	if (nIdCerere == 0) // iterogare existenta fisier
+		write(nSocket, resp, 8);
+
 	if (close(nSocket) == ERROR) {
 		printf("\nCould not close socket in trateazaSocket\n");
 	}
@@ -96,7 +116,7 @@ int main(int argc, char* argv[]) {
 				printf("\nCould not close serverSocket in child\n");
 				return 0;
 			}
-			trateazaSocket(hClientSocket);
+			trateazaSocket(hClientSocket, argv[2]);
 			exit(0);
 		}
 
