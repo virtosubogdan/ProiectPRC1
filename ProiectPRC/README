@@ -1,5 +1,96 @@
 Proiect in C pentru laboratorul de PRC.
 
-Tema:nealeasa
+Tema:Transfer multisegment de fisiere
 
-Studenti:Virtosu Bogdan
+Studenti:Virtosu Bogdan,Neag Alexandru Daniel Danut,Tibisor Nutu Paut
+
+Urmeaza specificatii:
+Clientul :
+
+1.Specificatii:
+Trebuie sa aduca un fisier de la servere pe mai multe segmente.
+Lungimea numelui unui fisier (cu tot cu cale): trebuie sa fie cuprinsa intr 0 si 511 caractere.
+Numarul de segmente va fi  in intervalul  [1,256].
+Numarul de servere specificat va fi in intervalul  [1,10].
+Dimensiunea maxima a fisierului 1Gb.
+
+2.Parametrii de intrare:
+client numeFisier nrSegmente [server1 [server2[...]]] 
+a.nume fisier: numele cu tot cu cale care trebuie adus
+b.numarul de sergente pe care se aduce segmentul
+c.lista de servere de unde se aduce fisierul 
+Un nume de server valid este identificat prin ip ,ex:192.168.1.20
+Exemplu de utilizare:
+client /musica/justinbieber.wav 3 127.0.0.1 192.168.1.20 144.17.23.123
+
+3.Functionare:
+	1.Daca e posibil clientul va interoga toate serverele de prezenta fisierului comandat.Daca interogare
+nu are succes pentru cel putin un server clientul se va oprii.
+	2.Pentru fiecare server care are fisierul:
+		-se incearca conectare pentru downloadarea unei bucati specificate
+	3.In caz de esec a unei downloadari se reincearca conectarea la serverele cu care s-a reusit.Acest pas
+se repeta pana cand fisierul se downloadeaza sau toate incercarile de conectare la server esueaza.
+Exemplificare functionare pe exemplu:
+daca va fi posibil clientul va aduce fisierul "/musica/justinbieber.wav" pe 3 segmente de la fiecare
+din cele trei servere (9 segmente in total) . Daca nu este posibil se va reincerca pana se downloadeaza
+fisierul sau nici un server nu raspunde cererii de download.
+
+
+4.Implementare :
+Detalii:Downloadul se face pe bytes.
+
+Date initiale:nume fisier,lista servere , numar segmente
+Pasul 1:interogarea listei de servere : ai fisierul "nume fisier" ? de unde se afla dimensiunea fisierului 
+(in caz ca aceasta nu e egala la toate serverele se trece la pasul 5)
+
+Date: dimesiune fisier,nume fisier ,lista servere care au fisierul >0,numar de segmente, dimensiune segment [=dimesiuneFisier/(lista servere*numar segmente)]
+Pasul 2:
+ se lanseaza threaduri pentru fiecare segment*server pentru a downloadata de la server un segment din fisier .Segmentul din fisier 
+va fi bucata [numar thread*dimensiune segment,(numar thread+1) *dimensiune segment-1]
+
+Responsabilitate threaduri:
+	se conecteaza la server si downloadeaza intr-un fisier specificat la initializarea lor.
+
+Date:fisiere create,threaduri pornite
+Pasul 3: serverul culege starea fiilor lansati si la terminarea tuturor,in caz de esec revine la pasul 2 cu o lista mai mica de servere
+
+Pasul 4: daca s-au downloadat toate segmentele se unesc bucatile
+
+Pasul 5: se sterg toate resursele temporare folosite
+
+Server:
+
+1.Specificatii.
+Serveste cererile clientilor.
+Cererea 1. primeste un nume de fisier si returneaza dimensiunea sa sau -1 daca nu gaseste fisierul
+Cererea 2. primeste un nume de fisier ,dimensiunea unui segment si locatia din fisier de la care se citeste
+si trimite inapoi, daca are fisierul, datele din fisier(de dimensiunea specificata) incepand de la locatia specificata 
+Serverul va rula intotdeauna pe linux si nu va trimite fisiere mai mari de 1 Gb.
+Downloadul se face pe bytes.
+
+2.Parametrii de intrare
+server numeDirector
+numele directorului: numele de cale unde se cauta si de unde se trimit fisierele
+
+Exemplu server: server .
+
+3.Functionare:
+La servirea cererilor nu se va tine cont de cererile precedente sau de clientii precedenti.
+Pentru fiecare cerere se deschide un proces nou.
+Cererea 1: interogare existenta fisier
+Protocol: 4|4|[1,512] bytes, returnat 8 bytes
+0-3 bytes: int 0 //defineste cererea
+4-7 bytes: lungimea numelui fisierului
+urmatorii: char[4-7 bytes]:numele fisierului
+returnat [0-7] bytes:long dimensiunea fisierului: -1 daca nu e gasit
+Cererea 2: download
+Protocol: 4|4|[1,512]|8|8 bytes,returnat bytes ceruti
+0-3 bytes: int 1//defineste cererea
+4-7 bytes: lungimea numelui fisierului
+urmatorii: char[4-7 bytes]:numele fisierului
+urmatorii 8:long dimensiunea segmentului
+urmatorii 8:byte-ul din fisier la care se porneste downloadul
+
+4.Implementare
+Pentru fiecare cerere se creaza un proces pentru tratarea ei.
+Cererile 2 vor deschide fisiere doar pentru citire.
