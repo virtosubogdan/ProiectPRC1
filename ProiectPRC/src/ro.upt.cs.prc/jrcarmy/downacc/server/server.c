@@ -25,32 +25,35 @@ void cerereDownload(int nSocket) {
 	printf("ajuns la cerere download");
 }
 
-void trateazaSocket(int nSocket, char *dir) {
+void trateazaSocket(int nSocket, char dir[]) {
 	int nIdCerere;
-	printf("read %d bytes\n", (int) read(nSocket, &nIdCerere, 4));
+	printf("read %d \n", (int) read(nSocket, &nIdCerere, 4));
 	printf("citit %d\n", nIdCerere);
 
 	int filenameSize;
 	int resp;
-
-	read(nSocket, &filenameSize, 4);
+	char numeComplet[1024];
+	printf("read %d \n", (int) read(nSocket, &filenameSize, 4));
 
 	char filename[filenameSize];
-	read(nSocket, &filename, filenameSize);
-
-
-	strcat(dir,filename);
-
+	printf("read %d \n", (int) read(nSocket, &filename, filenameSize));
+	filename[filenameSize] = '\0';
+	strcpy(numeComplet, dir);
+	strcat(dir, filename);
+	printf("numecomplet:%s\n", dir);
 	struct stat fs;
-	if(stat(dir,&fs) < 0)resp=-1;
-	else resp=fs.st_size;
-
-	if(nIdCerere==0)// iterogare existenta fisier
-		write(nSocket, resp, 8);
+	if (stat(dir, &fs) < 0)
+		resp = -1;
+	else
+		resp = fs.st_size;
+	printf("dimensiune: %d\n", resp);
+	if (nIdCerere == 0) // iterogare existenta fisier
+		write(nSocket, &resp, 4);
 
 	if (close(nSocket) == ERROR) {
 		printf("\nCould not close socket in trateazaSocket\n");
 	}
+
 }
 
 int main(int argc, char* argv[]) {
@@ -114,7 +117,7 @@ int main(int argc, char* argv[]) {
 				printf("\nCould not close serverSocket in child\n");
 				return 0;
 			}
-			trateazaSocket(hClientSocket,argv[2]);
+			trateazaSocket(hClientSocket, argv[1]);
 			exit(0);
 		}
 
@@ -127,7 +130,6 @@ int main(int argc, char* argv[]) {
 			return 0;
 		}
 	}
-
 	return 0;
 }
 
