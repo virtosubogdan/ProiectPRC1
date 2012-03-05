@@ -27,9 +27,12 @@ void trateazaSocket(int nSocket) {
 	int nIdCerere;
 	printf("read %d bytes\n", (int) read(nSocket, &nIdCerere, 4));
 	printf("citit %d\n", nIdCerere);
+	int nr = 334;
+	write(nSocket, &nr, 4);
 	if (close(nSocket) == ERROR) {
 		printf("\nCould not close socket in trateazaSocket\n");
 	}
+
 }
 
 int main(int argc, char* argv[]) {
