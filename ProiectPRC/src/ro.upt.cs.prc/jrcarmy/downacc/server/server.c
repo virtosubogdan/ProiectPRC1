@@ -48,7 +48,6 @@ void trateazaSocket(int nSocket, char *dir) {
 	if(nIdCerere==0)// iterogare existenta fisier
 		write(nSocket, resp, 8);
 
-
 	if (close(nSocket) == ERROR) {
 		printf("\nCould not close socket in trateazaSocket\n");
 	}
