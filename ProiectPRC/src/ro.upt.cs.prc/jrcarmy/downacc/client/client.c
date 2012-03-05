@@ -5,77 +5,100 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 /*
- * test
  * @since 28/02/2012
  * @author bufu
  */
-#define SOCKET_ERROR        -1
-#define BUFFER_SIZE         100
-#define HOST_NAME_SIZE      255
+#define ERROR        -1
+#define SERVER_PORT   1025
+#define ERROR_PARAMETRII 1
+
+struct serverInfo {
+	char nume[128];
+	int port;
+};
 /**
- *
+ * @param argv[1] numeFisier
+ * @param argv[2] nrSegmente
+ * @param argv[3] numeserver:nrport
+ * @optionali argv[4]-argv[12] numeserver:port aditionali
  */
 int main(int argc, char* argv[]) {
+	char strNumeFisier[512];
+	int nrSegmente;
+	if (argc < 4) {
+		printf(
+				"usage: numeFisier nrSegmente numeServer:port [..numeServer:port]");
+		return ERROR_PARAMETRII;
+	}
+	if (strlen(argv[1]) > 511) {
+		printf("Filename too long");
+		return ERROR_PARAMETRII;
+	}
+	strcpy(strNumeFisier, argv[1]);
+	nrSegmente = atoi(argv[2]);
+	if (nrSegmente < 1 || nrSegmente > 100) {
+		printf("Invalid segment number");
+		return ERROR_PARAMETRII;
+	}
+	int nrServere = argc - 3;
+	struct serverInfo servere[nrServere];
+	int index, cIndex, nameLength;
+	char *buffer;
+	for (index = 3; index < argc; index++) {
+		cIndex = 0;
+		nameLength = strlen(argv[index]);
+		buffer = argv[index];
+		while (buffer[cIndex] != ':' && cIndex < nameLength) {
+			servere[index - 3].nume[cIndex] = buffer[cIndex++];
+		}
+		servere[index - 3].nume[cIndex] = '\0';
+		cIndex++;
+		if (cIndex >= nameLength) {
+			printf("Invalid server name");
+			return ERROR_PARAMETRII;
+		}
+		servere[index - 3].port = atoi(buffer + cIndex);
+		printf("server: %s cu port %d \n", servere[index - 3].nume,
+				servere[index - 3].port);
+	}
 
-	int hSocket; /* handle to socket */
-	struct hostent* pHostInfo; /* holds info about a machine */
-	struct sockaddr_in Address; /* Internet socket address stuct */
+	printf("Starting Jurca's Army client\n");
+	printf("nr servere:%d\n", nrServere);
+	printf("de aici incolo cod de test cu trimitere int pe servere \n");
+	int hSocket;
+	struct hostent* pHostInfo;
+	struct sockaddr_in Address;
 	long nHostAddress;
-	char pBuffer[BUFFER_SIZE];
-	unsigned nReadAmount;
-	char strHostName[HOST_NAME_SIZE];
-	int nHostPort;
 
-	if (argc < 3) {
-		printf("\nUsage: client host-name host-port\n");
-		return 0;
-	} else {
-		strcpy(strHostName, argv[1]);
-		nHostPort = atoi(argv[2]);
+	for (index = 0; index < nrServere; index++) {
+		printf("starting send to %s\n", servere[index].nume);
+		if ((hSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == ERROR) {
+			printf("Error creating socket socket\n");
+			break;
+		}
+
+		pHostInfo = gethostbyname(servere[index].nume); //will work for string IPs
+		memcpy(&nHostAddress, pHostInfo->h_addr, pHostInfo->h_length);
+
+		Address.sin_addr.s_addr = nHostAddress;
+		Address.sin_port = htons(servere[index].port);
+		Address.sin_family = AF_INET;
+
+		if (connect(hSocket, (struct sockaddr*) &Address,
+				sizeof(Address)) == ERROR) {
+			printf("\nCould not connect to server\n");
+			break;
+		}
+		int nr = index + 67;
+		printf("write %d\n", (int) write(hSocket, &nr, 4));
+
+		if (close(hSocket) == ERROR) {
+			printf("\nCould not close socket\n");
+			break;
+		}
 	}
-
-	printf("\nMaking a socket");
-	/* make a socket */
-	hSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-	if (hSocket == SOCKET_ERROR) {
-		printf("\nCould not make a socket\n");
-		return 0;
-	}
-
-	/* get IP address from name */
-	pHostInfo = gethostbyname(strHostName);
-	/* copy address into long */
-	memcpy(&nHostAddress, pHostInfo->h_addr, pHostInfo->h_length);
-
-	/* fill address struct */
-	Address.sin_addr.s_addr = nHostAddress;
-	Address.sin_port = htons(nHostPort);
-	Address.sin_family = AF_INET;
-
-	printf("\nConnecting to %s on port %d", strHostName, nHostPort);
-
-	/* connect to host */
-	if (connect(hSocket, (struct sockaddr*) &Address,
-			sizeof(Address)) == SOCKET_ERROR) {
-		printf("\nCould not connect to host\n");
-		return 0;
-	}
-
-	/* read from socket into buffer
-	 ** number returned by read() and write() is the number of bytes
-	 ** read or written, with -1 being that an error occured */
-	nReadAmount = read(hSocket, pBuffer, BUFFER_SIZE);
-	printf("\nReceived \"%s\" from server\n", pBuffer);
-	/* write what we received back to the server */
-	write(hSocket, pBuffer, nReadAmount);
-	printf("\nWriting \"%s\" to server", pBuffer);
-
-	printf("\nClosing socket\n");
-	/* close socket */
-	if (close(hSocket) == SOCKET_ERROR) {
-		printf("\nCould not close socket\n");
-		return 0;
-	}
+	printf("end client\n");
+	return 0;
 }

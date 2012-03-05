@@ -5,104 +5,109 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 /**
  * @since 28/02/2012
  * @author bufu und ady bicepsosu
  * @bla uatever...
  */
 
-#define SOCKET_ERROR        -1
-#define BUFFER_SIZE         100
-#define MESSAGE             "This is the message I'm sending back and forth"
+#define ERROR        -1
 #define QUEUE_SIZE          5
+#define HOST_PORT			1025
+
+void cerereInterogare(int nSocket) {
+	printf("ajuns la cerere interogare");
+}
+
+void cerereDownload(int nSocket) {
+	printf("ajuns la cerere download");
+}
+
+void trateazaSocket(int nSocket) {
+	int nIdCerere;
+	printf("read %d bytes\n", (int) read(nSocket, &nIdCerere, 4));
+	printf("citit %d\n", nIdCerere);
+	if (close(nSocket) == ERROR) {
+		printf("\nCould not close socket in trateazaSocket\n");
+	}
+}
 
 int main(int argc, char* argv[]) {
-	int hSocket, hServerSocket; /* handle to socket */
-	struct hostent* pHostInfo; /* holds info about a machine */
+	int hClientSocket, hServerSocket; /* handle to socket */
+	//struct hostent* pHostInfo; /* holds info about a machine */
 	struct sockaddr_in Address; /* Internet socket address stuct */
 	int nAddressSize = sizeof(struct sockaddr_in);
-	char pBuffer[BUFFER_SIZE];
-	int nHostPort;
 
-	if (argc < 2) {
-		printf("\nUsage: server host-port\n");
-		return 0;
-	} else {
-		nHostPort = atoi(argv[1]);
+	printf("Starting Jurca's Army server\n");
+
+	if ((hServerSocket = socket(AF_INET, SOCK_STREAM, 0)) == ERROR) {
+		printf("Could not make a socket\n");
+		return 1;
 	}
 
-	printf("\nStarting server");
-
-	printf("\nMaking socket");
-	/* make a socket */
-	hServerSocket = socket(AF_INET, SOCK_STREAM, 0);
-
-	if (hServerSocket == SOCKET_ERROR) {
-		printf("\nCould not make a socket\n");
-		return 0;
-	}
-
-	/* fill address struct */
 	Address.sin_addr.s_addr = INADDR_ANY;
-	Address.sin_port = htons(nHostPort);
+	Address.sin_port = htons(HOST_PORT);
 	Address.sin_family = AF_INET;
 
-	printf("\nBinding to port %d", nHostPort);
-
-	/* bind to a port */
 	if (bind(hServerSocket, (struct sockaddr*) &Address,
-			sizeof(Address)) == SOCKET_ERROR) {
-		printf("\nCould not connect to host\n");
+			sizeof(Address)) == ERROR) {
+		printf("Could not connect bind socket to port %d\n", HOST_PORT);
 		return 0;
 	}
-	/*  get port number */
-	getsockname(hServerSocket, (struct sockaddr *) &Address,
-			(socklen_t *) &nAddressSize);
-	printf("opened socket as fd (%d) on port (%d) for stream i/o\n",
-			hServerSocket, ntohs(Address.sin_port));
+	/*  get port number
+	 getsockname(hServerSocket, (struct sockaddr *) &Address,
+	 (socklen_t *) &nAddressSize);
+	 printf("opened socket as fd (%d) on port (%d) for stream i/o\n",
+	 hServerSocket, ntohs(Address.sin_port));
 
-	printf(
-			"Server\n\
+	 printf(
+	 "Server\n\
               sin_family        = %d\n\
               sin_addr.s_addr   = %d\n\
               sin_port          = %d\n",
-			Address.sin_family, Address.sin_addr.s_addr,
-			ntohs(Address.sin_port));
+	 Address.sin_family, Address.sin_addr.s_addr,
+	 ntohs(Address.sin_port));
+	 */
 
-	printf("\nMaking a listen queue of %d elements", QUEUE_SIZE);
-	/* establish listen queue */
-	if (listen(hServerSocket, QUEUE_SIZE) == SOCKET_ERROR) {
-		printf("\nCould not listen\n");
+	if (listen(hServerSocket, QUEUE_SIZE) == ERROR) {
+		printf("Could not listen\n");
 		return 0;
 	}
-
+	int nProcId;
 	for (;;) {
-		printf("\nWaiting for a connection\n");
-		/* get the connected socket */
-		hSocket = accept(hServerSocket, (struct sockaddr*) &Address,
+		printf("Waiting for new connection\n");
+
+		hClientSocket = accept(hServerSocket, (struct sockaddr*) &Address,
 				(socklen_t *) &nAddressSize);
-
-		printf("\nGot a connection");
-		strcpy(pBuffer, MESSAGE);
-		printf("\nSending \"%s\" to client", pBuffer);
-		/* number returned by read() and write() is the number of bytes
-		 ** read or written, with -1 being that an error occured
-		 ** write what we received back to the server */
-		write(hSocket, pBuffer, strlen(pBuffer) + 1);
+		if ((nProcId = fork()) == ERROR) {
+			printf("Error on fork");
+			if (close(hClientSocket) == ERROR)
+				printf("Continued error on socked closing");
+			break;
+		}
+		//write(hSocket, pBuffer, strlen(pBuffer) + 1);
 		/* read from socket into buffer */
-		read(hSocket, pBuffer, BUFFER_SIZE);
+		//read(hSocket, pBuffer, BUFFER_SIZE);
+		if (nProcId == 0) {
+			if (close(hServerSocket) == ERROR) {
+				printf("\nCould not close serverSocket in child\n");
+				return 0;
+			}
+			trateazaSocket(hClientSocket);
+			exit(0);
+		}
 
-		if (strcmp(pBuffer, MESSAGE) == 0)
-			printf("\nThe messages match");
-		else
-			printf("\nSomething was changed in the message");
-
-		printf("\nClosing the socket");
-		/* close socket */
-		if (close(hSocket) == SOCKET_ERROR) {
-			printf("\nCould not close socket\n");
+		/*
+		 * TODO: nu asteptam dupa fii, desi cred ca terminarea lor ar trebui prinsa cu
+		 * semnale, adica instalam o rutina de pentru semnalul SIGCHLD ca sa afisam si sa preluam starea
+		 */
+		if (close(hClientSocket) == ERROR) {
+			printf("\nCould not close socket in server\n");
 			return 0;
 		}
 	}
+
+	return 0;
 }
 
