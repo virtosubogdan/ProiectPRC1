@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
@@ -18,10 +19,10 @@
 
 int main(int argc, char* argv[]) {
 	int hSocket, hServerSocket; /* handle to socket */
-	struct hostent* pHostInfo; /* holds info about a machine */
+	//struct hostent* pHostInfo; /* holds info about a machine */
 	struct sockaddr_in Address; /* Internet socket address stuct */
 	int nAddressSize = sizeof(struct sockaddr_in);
-	char pBuffer[BUFFER_SIZE];
+
 	int nHostPort;
 
 	if (argc < 2) {
@@ -83,19 +84,27 @@ int main(int argc, char* argv[]) {
 				(socklen_t *) &nAddressSize);
 
 		printf("\nGot a connection");
-		strcpy(pBuffer, MESSAGE);
-		printf("\nSending \"%s\" to client", pBuffer);
-		/* number returned by read() and write() is the number of bytes
-		 ** read or written, with -1 being that an error occured
-		 ** write what we received back to the server */
-		write(hSocket, pBuffer, strlen(pBuffer) + 1);
-		/* read from socket into buffer */
-		read(hSocket, pBuffer, BUFFER_SIZE);
 
-		if (strcmp(pBuffer, MESSAGE) == 0)
-			printf("\nThe messages match");
-		else
-			printf("\nSomething was changed in the message");
+		int req;
+		int filenameSize;
+		int resp;
+
+		read(hSocket, &req, 4);
+		read(hSocket, &filenameSize, 4);
+
+		char filename[filenameSize];
+		read(hSocket, &filename, filenameSize);
+
+
+		strcat(argv[2],filename);
+
+		struct stat fs;
+		if(stat(argv[2],&fs) < 0)resp=-1;
+		else resp=fs.st_size;
+
+		if(req==0)// iterogare existenta fisier
+			write(hSocket, resp, 8);
+
 
 		printf("\nClosing the socket");
 		/* close socket */
