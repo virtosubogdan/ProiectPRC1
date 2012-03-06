@@ -8,13 +8,13 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/wait.h>
 
 /*
  * @since 28/02/2012
  * @author bufu
  */
 #define ERROR        -1
-#define SERVER_PORT   1025
 #define ERROR_PARAMETRII 1
 #define ERROR_SERVER 2
 #define ERROR_CREATE 3
@@ -58,8 +58,20 @@ int getSocket(servInfo server) {
 	}
 	return hSocket;
 }
-void* download(down download) {
-
+int download(down download, char *fisier) {
+	printf("download cu %s,%d\n", download.serv->nume, download.serv->port);
+	int socket = getSocket(*download.serv);
+	int cerere = 1, lungimeNume = strlen(fisier);
+	if (socket < 0)
+		return 1;
+	printf("wrote %d bytes\n", (int) write(socket, &cerere, 4));
+	printf("wrote %d bytes\n", (int) write(socket, &lungimeNume, 4));
+	printf("wrote %d bytes\n", (int) write(socket, &fisier, lungimeNume));
+	printf("wrote %d bytes\n", (int) write(socket, &download.size, 4));
+	printf("wrote %d bytes\n", (int) write(socket, &download.position, 4));
+	char buffer[1024];
+	printf("citit %d\n", (int) read(socket, &buffer, download.size));
+	return 0;
 }
 /**
  * Interogam serverele sa vedem daca au fisierul si dimensiunea corespunde
@@ -79,7 +91,7 @@ int interogareSecventiala(int nrServere, servInfo servere[], char *fisier) {
 		printf("wrote %d bytes\n", (int) write(hSocket, &cerere, 4));
 		printf("wrote %d bytes\n", (int) write(hSocket, &lungimeNume, 4));
 		printf("wrote %d bytes\n", (int) write(hSocket, fisier, lungimeNume));
-		read(hSocket, &citit, 4);
+		printf("citit %d\n", (int) read(hSocket, &citit, 4));
 		if (citit != -1) {
 			if (lungimeFisier == -1) {
 				lungimeFisier = citit;
@@ -116,7 +128,7 @@ void startClient(int nrServere, int segmente, servInfo servere[], char *fisier) 
 	printf("Starting Jurca's Army client\n");
 	int index, fisierDownloadat = 0;
 	int dimensiune, dimPerThread;
-	pthread_t threaduri[100], nrTrd = 0;
+	int nrTrd = 0;
 	int file;
 	down task[100];
 	if ((dimensiune = interogareSecventiala(nrServere, servere, fisier))
@@ -140,9 +152,16 @@ void startClient(int nrServere, int segmente, servInfo servere[], char *fisier) 
 			task[nrTrd].serv = &servere[index];
 			task[nrTrd].position = nrTrd * dimPerThread;
 			task[nrTrd].size = dimPerThread;
-			pthread_create(threaduri[nrTrd], NULL, download,
-					(void*) &task[nrTrd++]);
+			if (fork() == 0) {
+				exit(download(task[nrTrd], fisier));
+			}
+			nrTrd++;
 		}
+	}
+	int returnat;
+	for (index = 0; index < nrTrd; index++) {
+		wait(&returnat);
+		printf("a returnat %d", WEXITSTATUS(returnat));
 	}
 	//}
 	if (!fisierDownloadat)
