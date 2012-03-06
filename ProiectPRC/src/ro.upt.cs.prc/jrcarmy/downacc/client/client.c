@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 /*
  * @since 28/02/2012
  * @author bufu
@@ -14,6 +17,7 @@
 #define SERVER_PORT   1025
 #define ERROR_PARAMETRII 1
 #define ERROR_SERVER 2
+#define ERROR_CREATE 3
 
 typedef struct serverInfoStruct {
 	char nume[128];
@@ -25,7 +29,12 @@ typedef struct serverInfoStruct {
 	 */
 	int stare;
 } servInfo;
-
+typedef struct downloadS {
+	servInfo *serv;
+	int file;
+	int position;
+	int size;
+} down;
 /**
  * Returns a socket to the given server
  */
@@ -49,7 +58,9 @@ int getSocket(servInfo server) {
 	}
 	return hSocket;
 }
+void* download(down download) {
 
+}
 /**
  * Interogam serverele sa vedem daca au fisierul si dimensiunea corespunde
  * @return dimensiunea fisierului , -1 altfel
@@ -91,26 +102,50 @@ int interogareSecventiala(int nrServere, servInfo servere[], char *fisier) {
 	return lungimeFisier;
 }
 
+int getServereActive(int nrServere, servInfo servere[]) {
+	int index, nr = 0;
+	for (index = 0; index < nrServere; index++)
+		if (servere[index].stare == 1)
+			nr++;
+	return nr;
+}
 /**
  * Start client
  */
-void startClient(int nrServere, servInfo servere[], char *fisier) {
+void startClient(int nrServere, int segmente, servInfo servere[], char *fisier) {
 	printf("Starting Jurca's Army client\n");
-	int fisierDownloadat = 0;
-	int servereActive = 1; //to get to the first iteration
-	int dimensiune;
+	int index, fisierDownloadat = 0;
+	int dimensiune, dimPerThread;
+	pthread_t threaduri[100], nrTrd = 0;
+	int file;
+	down task[100];
 	if ((dimensiune = interogareSecventiala(nrServere, servere, fisier))
 			== -1) {
 		printf("Serverele returneaza dimensiuni eronate!\n");
 		exit(ERROR_SERVER);
 	}
 	printf("Dimensiune fisier %s:%d\n", fisier, dimensiune);
-	//TODO:aici facem fisierul in care scriem si care va fi pasat in fii
-	while (servereActive > 0 && !fisierDownloadat) {
-		//defapt pornim copii care sa downloadeze fisierul
-		servereActive = 0;
+	if ((file = open(fisier, O_WRONLY | O_CREAT | O_EXCL,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+		printf("Unable to create file:%s\n", fisier);
+		exit(ERROR_CREATE);
 	}
-	if (servereActive == 0)
+	//int servereActive;
+	//while ((servereActive = getServereActive(nrServere, servere)) > 0
+	//		&& !fisierDownloadat) {
+	dimPerThread = dimensiune / (nrServere * segmente);
+	for (index = 0; index < nrServere; index++) {
+		if (servere[index].stare == 1) {
+			task[nrTrd].file = file;
+			task[nrTrd].serv = &servere[index];
+			task[nrTrd].position = nrTrd * dimPerThread;
+			task[nrTrd].size = dimPerThread;
+			pthread_create(threaduri[nrTrd], NULL, download,
+					(void*) &task[nrTrd++]);
+		}
+	}
+	//}
+	if (!fisierDownloadat)
 		printf("Nu exista servere de unde sa downloadam fisierul\n");
 	printf("End client\n");
 }
@@ -161,7 +196,7 @@ int main(int argc, char* argv[]) {
 		printf("server: %s cu port %d \n", servere[index - 3].nume,
 				servere[index - 3].port);
 	}
-	startClient(nrServere, servere, strNumeFisier);
+	startClient(nrServere, nrSegmente, servere, strNumeFisier);
 
 	return 0;
 }

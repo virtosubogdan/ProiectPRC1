@@ -40,13 +40,13 @@ void trateazaSocket(int nSocket, char dir[]) {
 	filename[filenameSize] = '\0';
 	strcpy(numeComplet, dir);
 	strcat(dir, filename);
-	printf("numecomplet:%s\n", dir);
+	printf("numecomplet : %s\n", dir);
 	struct stat fs;
 	if (stat(dir, &fs) < 0)
 		resp = -1;
 	else
 		resp = fs.st_size;
-	printf("dimensiune: %d\n", resp);
+	printf("dimensiune : %d\n", resp);
 	if (nIdCerere == 0) // iterogare existenta fisier
 		write(nSocket, &resp, 4);
 
