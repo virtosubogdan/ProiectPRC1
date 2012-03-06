@@ -26,6 +26,7 @@ void cerereDownload(int nSocket) {
 }
 
 void trateazaSocket(int nSocket, char dir[]) {
+
 	int nIdCerere;
 	printf("read %d \n", (int) read(nSocket, &nIdCerere, 4));
 	printf("citit %d\n", nIdCerere);
@@ -49,6 +50,11 @@ void trateazaSocket(int nSocket, char dir[]) {
 	printf("dimensiune: %d\n", resp);
 	if (nIdCerere == 0) // iterogare existenta fisier
 		write(nSocket, &resp, 4);
+
+	if (nIdCerere == 1) // trimite fisier
+	{
+		//cod
+	}
 
 	if (close(nSocket) == ERROR) {
 		printf("\nCould not close socket in trateazaSocket\n");
