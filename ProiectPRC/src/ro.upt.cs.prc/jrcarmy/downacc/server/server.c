@@ -41,7 +41,7 @@ void trateazaSocket(int nSocket, char dir[]) {
 	filename[filenameSize] = '\0';
 	strcpy(numeComplet, dir);
 	strcat(dir, filename);
-	printf("numecomplet:%s\n", dir);
+	printf("numecompletz:%s\n", dir);
 	struct stat fs;
 	if (stat(dir, &fs) < 0)
 		resp = -1;
