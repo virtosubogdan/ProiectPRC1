@@ -33,7 +33,7 @@ void trateazaSocket(int nSocket, char dir[]) {
 	printf("citit %d\n", nIdCerere);
 
 	int filenameSize;
-	int resp;
+	int resp, sentBites;
 	char numeComplet[1024];
 	printf("read %d \n", (int) read(nSocket, &filenameSize, 4));
 
@@ -50,25 +50,46 @@ void trateazaSocket(int nSocket, char dir[]) {
 		resp = fs.st_size;
 	printf("dimensiune: %d\n", resp);
 	if (nIdCerere == 0) // iterogare existenta fisier
-		write(nSocket, &resp, 4);
+		{
+			if((sentBites=write(nSocket, &resp, 4))==-1)
+				printf("Eroare la interogare \n");
+			else
+				printf("Am trimis dimensiunea fisierului : %d \n",sentBites);
+		}
 
 	if (nIdCerere == 1) // trimite fisier
 	{
-		int f,segSize,fileLoc,bRead;
+		int f,segSize,fileLoc,bRead, cursor;
 		printf("read %d \n", (int) read(nSocket, &segSize, 4));
 		printf("read %d \n", (int) read(nSocket, &fileLoc, 4));
-
+		printf("dimensiune segment : %d si locatie in fisier: %d \n",segSize, fileLoc);
 		f=open(dir,O_RDONLY,NULL);
-		if((lseek(f,fileLoc,SEEK_SET))==-1)
+		if((cursor=lseek(f,fileLoc,SEEK_SET))==-1)
 		{
 			printf("Eroare deplasament(lseek)");
 			 exit(1);
 		}
+		else
+		{
 
-		char outputData[segSize];
-		bRead=read(f,outputData,segSize);
-		write(nSocket, outputData, bRead);
+			printf("Am pozitionat cursorul pe pozitia : %d\n",cursor);
+			char outputData[256];
+			while(segSize>0)
+			{
+				if((bRead=read(f,outputData,256))==-1)
+					printf("Eroare la citire fisier");
+				else
+					{
+						printf("Am citit: %s\n",bRead);
+						segSize-=256;
 
+						if((cursor=write(nSocket, outputData, bRead))==-1)
+							printf("Eroare la trimitere");
+						else
+							printf("Am trimis : %d  biti\n",cursor);
+					}
+			}
+		}
 	}
 
 	if (close(nSocket) == ERROR) {
