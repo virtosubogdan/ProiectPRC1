@@ -60,17 +60,32 @@ int getSocket(servInfo server) {
 }
 int download(down download, char *fisier) {
 	printf("download cu %s,%d\n", download.serv->nume, download.serv->port);
+	printf("%s\n", fisier);
 	int socket = getSocket(*download.serv);
-	int cerere = 1, lungimeNume = strlen(fisier);
+	int cerere = 1, lungimeNume = strlen(fisier) + 1;
 	if (socket < 0)
 		return 1;
 	printf("wrote %d bytes\n", (int) write(socket, &cerere, 4));
 	printf("wrote %d bytes\n", (int) write(socket, &lungimeNume, 4));
-	printf("wrote %d bytes\n", (int) write(socket, &fisier, lungimeNume));
+	printf("wrote %d bytes\n", (int) write(socket, fisier, lungimeNume));
+	printf("cer dimensiunea %d\n", download.size);
 	printf("wrote %d bytes\n", (int) write(socket, &download.size, 4));
+	printf("incepand cu pozitia %d\n", download.position);
 	printf("wrote %d bytes\n", (int) write(socket, &download.position, 4));
-	char buffer[1024];
-	printf("citit %d\n", (int) read(socket, &buffer, download.size));
+	char buffer[128];
+	int index, nrCitiri = download.size / 128;
+	for (index = 0; index < nrCitiri; index++) {
+		int citit = read(socket, &buffer, 128);
+		printf("citit %d\n", citit);
+		//printf("am primit %s\n", buffer);
+		if ((lseek(download.file, download.position + index * 128, SEEK_SET))
+				== -1) {
+			printf("Eroare deplasament(lseek)\n");
+			return 2;
+		}
+		int scris = write(download.file, buffer, citit);
+		printf("am scris in fisier %d bytes\n", scris);
+	}
 	return 0;
 }
 /**
@@ -126,7 +141,7 @@ int getServereActive(int nrServere, servInfo servere[]) {
  */
 void startClient(int nrServere, int segmente, servInfo servere[], char *fisier) {
 	printf("Starting Jurca's Army client\n");
-	int index, fisierDownloadat = 0;
+	int index, indexSeg, fisierDownloadat = 0;
 	int dimensiune, dimPerThread;
 	int nrTrd = 0;
 	int file;
@@ -137,7 +152,7 @@ void startClient(int nrServere, int segmente, servInfo servere[], char *fisier) 
 		exit(ERROR_SERVER);
 	}
 	printf("Dimensiune fisier %s:%d\n", fisier, dimensiune);
-	if ((file = open(fisier, O_WRONLY | O_CREAT | O_EXCL,
+	if ((file = open(fisier, O_WRONLY | O_CREAT,
 			S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
 		printf("Unable to create file:%s\n", fisier);
 		exit(ERROR_CREATE);
@@ -148,23 +163,31 @@ void startClient(int nrServere, int segmente, servInfo servere[], char *fisier) 
 	dimPerThread = dimensiune / (nrServere * segmente);
 	for (index = 0; index < nrServere; index++) {
 		if (servere[index].stare == 1) {
-			task[nrTrd].file = file;
-			task[nrTrd].serv = &servere[index];
-			task[nrTrd].position = nrTrd * dimPerThread;
-			task[nrTrd].size = dimPerThread;
-			if (fork() == 0) {
-				exit(download(task[nrTrd], fisier));
+			for (indexSeg = 0; indexSeg < segmente; indexSeg++) {
+				task[nrTrd].file = file;
+				task[nrTrd].serv = &servere[index];
+				task[nrTrd].position = nrTrd * dimPerThread;
+				task[nrTrd].size = dimPerThread;
+				if (fork() == 0) {
+					exit(download(task[nrTrd], fisier));
+				}
+				nrTrd++;
 			}
-			nrTrd++;
 		}
 	}
-	int returnat;
+	fisierDownloadat = 1;
+	int returnat, exitStatus;
 	for (index = 0; index < nrTrd; index++) {
 		wait(&returnat);
-		printf("a returnat %d", WEXITSTATUS(returnat));
+		exitStatus = WEXITSTATUS(returnat);
+		if (exitStatus != 0)
+			fisierDownloadat = 0;
+		printf("Copilul a returnat %d\n", exitStatus);
 	}
 	//}
-	if (!fisierDownloadat)
+	if (fisierDownloadat)
+		printf("Am downloadat fisierul!");
+	else
 		printf("Nu exista servere de unde sa downloadam fisierul\n");
 	printf("End client\n");
 }
