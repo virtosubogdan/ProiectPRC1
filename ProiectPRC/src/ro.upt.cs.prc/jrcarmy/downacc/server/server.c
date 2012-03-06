@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <string.h>
@@ -9,8 +10,8 @@
 #include <stdlib.h>
 /**
  * @since 28/02/2012
- * @author bufu und ady bicepsosu
- * @bla uatever...
+ * @author bufu und ady bicepsosu und tibi sehr dick
+ * @copyright
  */
 
 #define ERROR        -1
@@ -26,6 +27,7 @@ void cerereDownload(int nSocket) {
 }
 
 void trateazaSocket(int nSocket, char dir[]) {
+
 	int nIdCerere;
 	printf("read %d \n", (int) read(nSocket, &nIdCerere, 4));
 	printf("citit %d\n", nIdCerere);
@@ -40,15 +42,34 @@ void trateazaSocket(int nSocket, char dir[]) {
 	filename[filenameSize] = '\0';
 	strcpy(numeComplet, dir);
 	strcat(dir, filename);
-	printf("numecomplet : %s\n", dir);
+	printf("numecomplet :%s\n", dir);
 	struct stat fs;
 	if (stat(dir, &fs) < 0)
 		resp = -1;
 	else
 		resp = fs.st_size;
-	printf("dimensiune : %d\n", resp);
+	printf("dimensiune: %d\n", resp);
 	if (nIdCerere == 0) // iterogare existenta fisier
 		write(nSocket, &resp, 4);
+
+	if (nIdCerere == 1) // trimite fisier
+	{
+		int f,segSize,fileLoc,bRead;
+		printf("read %d \n", (int) read(nSocket, &segSize, 4));
+		printf("read %d \n", (int) read(nSocket, &fileLoc, 4));
+
+		f=open(dir,O_RDONLY,NULL);
+		if((lseek(f,fileLoc,SEEK_SET))==-1)
+		{
+			printf("Eroare deplasament(lseek)");
+			 exit(1);
+		}
+
+		char outputData[segSize];
+		bRead=read(f,outputData,segSize);
+		write(nSocket, outputData, bRead);
+
+	}
 
 	if (close(nSocket) == ERROR) {
 		printf("\nCould not close socket in trateazaSocket\n");
@@ -117,7 +138,7 @@ int main(int argc, char* argv[]) {
 				printf("\nCould not close serverSocket in child\n");
 				return 0;
 			}
-			trateazaSocket(hClientSocket, argv[1]);
+			trateazaSocket(hClientSocket, argv[2]);
 			exit(0);
 		}
 
